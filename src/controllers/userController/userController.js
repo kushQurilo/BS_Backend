@@ -143,6 +143,7 @@ exports.userLogout = async (req, res, next) => {
 exports.forgetUserPassword = async (req, res, next) => {
   try {
     const { phone } = req.body;
+    console.log(phone);
     if (!phone) {
       return res.status(400).json({
         success: false,
@@ -177,39 +178,6 @@ exports.forgetUserPassword = async (req, res, next) => {
   }
 };
 
-// change password
-exports.changePassword = async (req, res) => {
-  try {
-    const { _id, password } = req.body;
-    if (!_id || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid Credentials",
-      });
-    }
-    const isUser = await userModel.findById(_id);
-    if (!isUser) {
-      return res.status(404).json({
-        success: false,
-        message: "Password change failed: user does not exist.",
-      });
-    }
-    const hasPass = await hashPassword(password);
-    isUser.password = hasPass;
-    await isUser.save();
-    return res.status(200).json({
-      success: true,
-      message: "Password Change.",
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-      error,
-    });
-  }
-};
-
 // verifyOtp then update
 
 exports.verifyOTPS = async (req, res) => {
@@ -238,14 +206,55 @@ exports.verifyOTPS = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
     delete otpStore[phone];
+    const payload = {
+      phone: phone,
+    };
+    const token = jwt.sign(payload, process.env.customerKey, {
+      expiresIn: "5m",
+    });
     return res.status(200).json({
       success: true,
       message: "Otp Verified",
+      token,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+// change password
+exports.changePassword = async (req, res) => {
+  try {
+    const { phone } = req;
+    const { password } = req.body;
+    console.log(phone, password);
+    if (!phone || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Credentials",
+      });
+    }
+    const isUser = await userModel.findOne({ phone });
+    if (!isUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Password change failed: user does not exist.",
+      });
+    }
+    const hasPass = await hashPassword(password);
+    isUser.password = hasPass;
+    await isUser.save();
+    return res.status(200).json({
+      success: true,
+      message: "Password Change.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      error,
     });
   }
 };
