@@ -24,6 +24,7 @@ const ImageUpload = require("./src/middlewares/ImageUploader");
 const CategoryRouter = require("./src/routes/categoryRoute");
 const adminRouter = require("./src/routes/adminRoute");
 const ProductsRouter = require("./src/routes/productsRoute");
+const enquaryRouter = require("./src/routes/enquaryRoute");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "./public/upload"),
@@ -36,6 +37,7 @@ app.use(`${baseURL}user`, userRoutes);
 app.use(`${baseURL}admin`, adminRouter);
 app.use(`${baseURL}category`, CategoryRouter);
 app.use(`${baseURL}product`, ProductsRouter);
+app.use(`${baseURL}enquary`, enquaryRouter);
 
 // otp with twilio testing
 const otpStoreTest = {};

@@ -9,64 +9,67 @@ exports.createProduct = async (req, res, next) => {
     if (!files || files.length === 0) {
       return res
         .status(400)
-        .json({ message: "Please upload at least one image" });
+        .json({ message: "Please upload at least 5 images" });
     }
 
     const images = [];
-    const { name, price, description, categoryId, points, variants } = req.body;
-    console.log("body", req.body);
-    if (!name || !price || !description || !categoryId) {
+    let { name, description, categoryId, points, variants, isFeature, brand } =
+      req.body;
+
+    if (!name || !description || !categoryId || !brand) {
       return res
         .status(400)
         .json({ message: "Please fill all required fields" });
     }
-
-    if (!Array.isArray(variants) || variants.length === 0) {
+    const safeParse = (val, fallback) => {
+      if (!val) return fallback;
+      try {
+        return JSON.parse(val);
+      } catch (e) {
+        return fallback;
+      }
+    };
+    // Parse variants (must be array of objects)
+    variants =
+      typeof variants === "string" ? safeParse(variants, []) : variants;
+    if (!Array.isArray(variants)) {
       return res.status(400).json({
         success: false,
-        message: "Variants missing",
+        message: "Variants must be a valid array",
       });
     }
 
-    // Upload images to Cloudinary
+    // Parse points (array of strings)
+    points = typeof points === "string" ? safeParse(points, []) : points;
+    if (!Array.isArray(points)) {
+      return res.status(400).json({
+        success: false,
+        message: "Points must be an array of strings",
+      });
+    }
+
+    // TODO: upload to Cloudinary (currently commented)
     for (const file of files) {
       const uploadCloud = await cloudinary.uploader.upload(file.path, {
         folder: "BS Products",
       });
       images.push(uploadCloud.secure_url);
-      fs.unlinkSync(file.path); // delete from local after upload
+      fs.unlinkSync(file.path);
     }
-
-    // Parse points (make sure it's an array)
-    let parsedPoints = [];
-    if (points) {
-      // If `points` comes as a JSON string (like from Postman or frontend), parse it
-      parsedPoints = typeof points === "string" ? JSON.parse(points) : points;
-
-      if (!Array.isArray(parsedPoints)) {
-        return res
-          .status(400)
-          .json({ message: "Points must be an array of strings" });
-      }
-    }
-
     // Build payload
     const payload = {
       name,
-      price,
       description,
       categoryId,
       images,
-      points: parsedPoints,
+      points,
       variants,
+      isFeature,
+      brand,
     };
 
     // Create product
     const product = await ProductModel.create(payload);
-
-    if (!product) {
-      return res.status(400).json({ message: "Failed to create product" });
-    }
 
     return res.status(201).json({
       message: "Product created successfully",
@@ -78,6 +81,7 @@ exports.createProduct = async (req, res, next) => {
     return res.status(500).json({ message: err.message, success: false });
   }
 };
+
 // get all products
 exports.getAllProducts = async (req, res, next) => {
   try {
@@ -103,7 +107,7 @@ exports.getAllProducts = async (req, res, next) => {
       products,
     });
   } catch (err) {
-    return res.status(500).json({ message: err.message, success: false });
+    return res.status(500).json({ message: err.message, success: false, err });
   }
 };
 
