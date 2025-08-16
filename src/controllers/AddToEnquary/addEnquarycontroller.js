@@ -3,6 +3,7 @@ const userModel = require("../../models/userModel");
 const productModel = require("../../models/productModel");
 const enquaryModel = require("../../models/enquaryModel");
 
+// add enquary for user
 exports.addToEquary = async (req, res) => {
   try {
     const { productId, id } = req.body;
@@ -113,15 +114,13 @@ exports.getAllEnquary = async (req, res) => {
 // delete enquary
 exports.deleteEnquary = async (req, res, next) => {
   try {
-    const { id } = req.body;
-
+    const { id } = req.params;
     if (!id) {
       return res.status(400).json({
         success: false,
         message: "Enquary id required",
       });
     }
-
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -129,16 +128,13 @@ exports.deleteEnquary = async (req, res, next) => {
       });
     }
 
-    const enquary = await enquaryModel.findById(id);
+    const enquary = await enquaryModel.findByIdAndDelete(id);
     if (!enquary) {
       return res.status(404).json({
         success: false,
         message: "Enquary not found",
       });
     }
-
-    await enquaryModel.findByIdAndDelete(id);
-
     return res.status(200).json({
       success: true,
       message: "Enquary deleted successfully",
@@ -188,15 +184,8 @@ exports.getSingleEnquary = async (req, res, next) => {
 // get all enquary to admin
 exports.getAllEnquaryToAdmin = async (req, res) => {
   try {
-    const isUser = await userModel.findById(id);
-    if (!isUser) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid User",
-      });
-    }
     const Enquary = await enquaryModel
-      .find({ user_id: id })
+      .find({})
       .populate("productId", "-__v")
       .populate("user_id", "-password -__v -status");
     if (!Enquary || Enquary.length === 0) {

@@ -3,18 +3,20 @@ const {
   getAllEnquary,
   getSingleEnquary,
   getAllEnquaryToAdmin,
+  deleteEnquary,
 } = require("../controllers/AddToEnquary/addEnquarycontroller");
 const { adminAuthentication } = require("../middlewares/AdminAuthetication");
 const { roleAuthetication } = require("../middlewares/roleBaseAuthe");
 
-const enquaryRouter = require("express").Router();
-enquaryRouter.post("/", addToEquary);
-enquaryRouter.get("/", getAllEnquary);
-enquaryRouter.get("/single/:id", getSingleEnquary);
-enquaryRouter.get(
+const enquiryRouter = require("express").Router();
+enquiryRouter.post("/", addToEquary);
+enquiryRouter.get("/", getAllEnquary);
+enquiryRouter.get("/single/:id", getSingleEnquary);
+enquiryRouter.get(
   "/all",
   adminAuthentication,
   roleAuthetication("admin"),
   getAllEnquaryToAdmin
 );
-module.exports = enquaryRouter;
+enquiryRouter.delete("/:id", deleteEnquary);
+module.exports = enquiryRouter;
