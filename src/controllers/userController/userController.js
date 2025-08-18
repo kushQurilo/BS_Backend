@@ -77,6 +77,7 @@ exports.getSingleUser = async (req, res, next) => {
 exports.userLogin = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    console.log(req.body);
     if (!email || !password) {
       return res.status(400).json({ message: "email and password missing" });
     }

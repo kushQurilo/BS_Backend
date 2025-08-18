@@ -100,7 +100,8 @@ exports.updateCategory = async (req, res, next) => {
 // delete category
 exports.deleteCategory = async (req, res, next) => {
   try {
-    const id = req.params;
+    const { id } = req.params;
+    console.log(id);
     const catId = new mongoose.Types.ObjectId(id);
     if (!id) {
       return res.status(400).json({
@@ -110,7 +111,7 @@ exports.deleteCategory = async (req, res, next) => {
     const category = await categoryModel.findByIdAndDelete(catId);
     if (!category) {
       return res.status(400).json({
-        message: "Category not deleted",
+        message: "Category found",
       });
     }
     res.status(200).json({

@@ -70,7 +70,7 @@ exports.addToEquary = async (req, res) => {
 // get all enquary to each user
 exports.getAllEnquary = async (req, res) => {
   try {
-    const { id } = req.body;
+    const { id } = req.params;
     if (!id) {
       return res.status(200).json({
         success: false,
@@ -184,23 +184,27 @@ exports.getSingleEnquary = async (req, res, next) => {
 // get all enquary to admin
 exports.getAllEnquaryToAdmin = async (req, res) => {
   try {
-    const Enquary = await enquaryModel
+    const enquiries = await enquaryModel
       .find({})
       .populate("productId", "-__v")
       .populate("user_id", "-password -__v -status");
-    if (!Enquary || Enquary.length === 0) {
-      return res.status(400).json({
+
+    if (!enquiries || enquiries.length === 0) {
+      return res.status(404).json({
         success: false,
-        message: "User Enquary not exist",
+        message: "No enquiries found",
       });
     }
+
     return res.status(200).json({
       success: true,
-      data: Enquary,
+      data: enquiries,
     });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: error.message, error });
+    console.log("message", error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

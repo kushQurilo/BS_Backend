@@ -10,13 +10,8 @@ const { roleAuthetication } = require("../middlewares/roleBaseAuthe");
 
 const enquiryRouter = require("express").Router();
 enquiryRouter.post("/", addToEquary);
-enquiryRouter.get("/", getAllEnquary);
 enquiryRouter.get("/single/:id", getSingleEnquary);
-enquiryRouter.get(
-  "/all",
-  adminAuthentication,
-  roleAuthetication("admin"),
-  getAllEnquaryToAdmin
-);
+enquiryRouter.get("/all", adminAuthentication, getAllEnquaryToAdmin);
+enquiryRouter.get("/:id", getAllEnquary);
 enquiryRouter.delete("/:id", deleteEnquary);
 module.exports = enquiryRouter;

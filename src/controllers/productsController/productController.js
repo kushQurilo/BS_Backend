@@ -5,22 +5,23 @@ const fs = require("fs");
 exports.createProduct = async (req, res, next) => {
   try {
     const files = req.files;
-
-    if (!files || files.length === 0) {
+    // Require at least 5 images
+    if (!files || files.length < 5) {
       return res
         .status(400)
-        .json({ message: "Please upload at least 5 images" });
+        .json({ success: false, message: "Please upload at least 5 images" });
     }
 
-    const images = [];
     let { name, description, categoryId, points, variants, isFeature, brand } =
       req.body;
-
+    // Validate required fields
     if (!name || !description || !categoryId || !brand) {
       return res
         .status(400)
-        .json({ message: "Please fill all required fields" });
+        .json({ success: false, message: "Please fill all required fields" });
     }
+
+    // Utility: safe JSON.parse with fallback
     const safeParse = (val, fallback) => {
       if (!val) return fallback;
       try {
@@ -29,7 +30,8 @@ exports.createProduct = async (req, res, next) => {
         return fallback;
       }
     };
-    // Parse variants (must be array of objects)
+
+    // Parse variants (array of objects required)
     variants =
       typeof variants === "string" ? safeParse(variants, []) : variants;
     if (!Array.isArray(variants)) {
@@ -38,8 +40,14 @@ exports.createProduct = async (req, res, next) => {
         message: "Variants must be a valid array",
       });
     }
+    if (variants.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one variant is required",
+      });
+    }
 
-    // Parse points (array of strings)
+    // Parse points (array of strings, optional)
     points = typeof points === "string" ? safeParse(points, []) : points;
     if (!Array.isArray(points)) {
       return res.status(400).json({
@@ -48,7 +56,8 @@ exports.createProduct = async (req, res, next) => {
       });
     }
 
-    // TODO: upload to Cloudinary (currently commented)
+    // Upload images to Cloudinary (uncomment when ready)
+    const images = [];
     for (const file of files) {
       const uploadCloud = await cloudinary.uploader.upload(file.path, {
         folder: "BS Products",
@@ -56,6 +65,7 @@ exports.createProduct = async (req, res, next) => {
       images.push(uploadCloud.secure_url);
       fs.unlinkSync(file.path);
     }
+
     // Build payload
     const payload = {
       name,
@@ -67,14 +77,17 @@ exports.createProduct = async (req, res, next) => {
       isFeature,
       brand,
     };
-
-    // Create product
+    // Save product in DB
     const product = await ProductModel.create(payload);
-
+    if (!product) {
+      return res.status(400).json({
+        success: false,
+        message: "failed to  add product",
+      });
+    }
     return res.status(201).json({
-      message: "Product created successfully",
+      message: "Product add successfully",
       success: true,
-      product,
     });
   } catch (err) {
     console.error("Create product error:", err);
