@@ -1,5 +1,6 @@
 const { default: mongoose } = require("mongoose");
 const userModel = require("../../models/userModel");
+const otpModel = require("../../models/otepModel");
 const {
   hashPassword,
   compareHashPassword,
@@ -8,6 +9,7 @@ const jwt = require("jsonwebtoken");
 const { isValidGST } = require("../../utitlies/gstValidation");
 const twilioClient = require("../../config/Twilio/TwilioConfig");
 const { genrateOTP } = require("../../utitlies/genrateOtp");
+const { default: axios } = require("axios");
 const otpStore = {};
 const otpStoreTest = {};
 exports.userSignup = async (req, res, next) => {
@@ -144,41 +146,65 @@ exports.userLogout = async (req, res, next) => {
 exports.forgetUserPassword = async (req, res, next) => {
   try {
     const { phone } = req.body;
-    console.log(phone);
-    if (!phone) {
+
+    // validate phone
+    if (!phone || !/^\d{10}$/.test(phone)) {
       return res.status(400).json({
         success: false,
-        message: "Phone number is required",
+        message: "Valid 10-digit phone number is required",
       });
     }
 
-    const isExist = await userModel.findOne({ phone });
-    if (!isExist) {
+    // check if user exists
+    const user = await userModel.findOne({ phone });
+    if (!user) {
       return res.status(404).json({
         success: false,
         message: "Phone number is not registered",
       });
     }
 
-    const otp = Math.floor(1000 + Math.random() * 9000); // 4 number otp
+    // generate OTP
+    const otp = Math.floor(1000 + Math.random() * 9000);
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
 
-    otpStore[phone] = {
-      otp,
-      expiresAt: Date.now() + 5 * 60 * 1000,
-    };
+    // remove old OTP if exists
+    await otpModel.deleteMany({ phone });
 
-    return res.status(200).json({
-      success: true,
+    // save new OTP in db
+    await otpModel.create({
+      phone,
       otp,
+      otpExpire: otpExpiry,
     });
+
+    // send OTP via SMS API
+    const apiUrl = `https://sms.autobysms.com/app/smsapi/index.php?key=45FA150E7D83D8&campaign=0&routeid=9&type=text&contacts=${phone}&senderid=SMSSPT&msg=Your OTP is ${otp} SELECTIAL&template_id=1707166619134631839`;
+
+    const response = await axios.get(apiUrl);
+    console.log("Forget Password SMS API Response:", response.data);
+
+    if (response.data.type === "SUCCESS") {
+      return res.status(200).json({
+        success: true,
+        message: "OTP sent successfully to registered number",
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP",
+        error: response.data,
+      });
+    }
   } catch (error) {
+    console.error("Forget password OTP error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal server error",
+      error: error.message,
     });
   }
 };
-
 // verifyOtp then update
 
 exports.verifyOTPS = async (req, res) => {
@@ -190,27 +216,25 @@ exports.verifyOTPS = async (req, res) => {
         message: "Phone, OTP, and new password are required",
       });
     }
-    const storedData = otpStore[phone];
-    if (!storedData) {
+    // OTP & expiry check
+    const user = await otpModel.findOne({ phone });
+    if (!user.otp || !user.otpExpire || Date.now() > user.otpExpire) {
       return res.status(400).json({
         success: false,
-        message: "No OTP found for this number. Please request again.",
+        message: "OTP expired or not found",
       });
     }
 
-    if (Date.now() > storedData.expiresAt) {
-      delete otpStore[phone];
-      return res.status(400).json({ success: false, message: "OTP expired" });
+    if (Number(user.otp) !== Number(otp)) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid OTP",
+      });
     }
-
-    if (String(storedData.otp) !== String(otp)) {
-      return res.status(400).json({ success: false, message: "Invalid OTP" });
-    }
-    delete otpStore[phone];
-    const payload = {
-      phone: phone,
-    };
-    const token = jwt.sign(payload, process.env.customerKey, {
+    user.otp = null;
+    user.otpExpire = null;
+    await user.save();
+    const token = jwt.sign({ phone }, process.env.customerKey, {
       expiresIn: "5m",
     });
     return res.status(200).json({

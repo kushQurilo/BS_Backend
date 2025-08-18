@@ -91,7 +91,9 @@ exports.createProduct = async (req, res, next) => {
     });
   } catch (err) {
     console.error("Create product error:", err);
-    return res.status(500).json({ message: err.message, success: false });
+    return res
+      .status(500)
+      .json({ message: err.message, success: false, error: err });
   }
 };
 
