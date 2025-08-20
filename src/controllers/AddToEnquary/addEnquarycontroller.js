@@ -6,7 +6,7 @@ const enquaryModel = require("../../models/enquaryModel");
 // add enquary for user
 exports.addToEquary = async (req, res) => {
   try {
-    const { productId, id } = req.body;
+    let { productId, id, variants } = req.body;
 
     if (!id) {
       return res
@@ -27,6 +27,48 @@ exports.addToEquary = async (req, res) => {
       return res
         .status(200)
         .json({ success: false, message: "Product id must be ObjectId" });
+    }
+
+    const safeParse = (val, fallback) => {
+      if (!val) return fallback;
+      try {
+        return JSON.parse(val);
+      } catch (e) {
+        return fallback;
+      }
+    };
+
+    // ✅ parse variants (string → array)
+    variants =
+      typeof variants === "string" ? safeParse(variants, []) : variants;
+
+    if (!Array.isArray(variants)) {
+      return res.status(400).json({
+        success: false,
+        message: "Variants should be a valid array",
+      });
+    }
+    if (variants.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one variant is required",
+      });
+    }
+
+    // ✅ Convert price & quantity → Number
+    variants = variants.map((v) => ({
+      price: Number(v.price),
+      quantity: v.quantity,
+    }));
+
+    // validate negative or NaN
+    for (let v of variants) {
+      if (isNaN(v.price) || v.price <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Price and quantity must be valid positive numbers",
+        });
+      }
     }
 
     const isUser = await userModel.findById(id);
@@ -52,9 +94,11 @@ exports.addToEquary = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Enquiry Already Exist" });
     }
+
     await enquaryModel.create({
       user_id: id,
       productId,
+      variants, // ✅ properly converted & validated variants
     });
 
     return res.status(200).json({ success: true, message: "Enquiry added..." });
@@ -92,8 +136,8 @@ exports.getAllEnquary = async (req, res) => {
     }
     const Enquary = await enquaryModel
       .find({ user_id: id })
-      .populate("productId", "-__v")
-      .populate("user_id", "-password -__v");
+      .populate("productId", "-__v -variants")
+      .populate("user_id", "-password -__v ");
     if (!Enquary || Enquary.length === 0) {
       return res.status(400).json({
         success: false,
@@ -161,7 +205,7 @@ exports.getSingleEnquary = async (req, res, next) => {
     const isEqnuary = await enquaryModel
       .findById(id)
       .populate("user_id", "-password -__v -status ")
-      .populate("productId");
+      .populate("productId", "-variants");
     if (!isEqnuary) {
       return res.status(400).json({
         success: false,

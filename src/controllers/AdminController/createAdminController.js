@@ -76,7 +76,7 @@ exports.adminLogin = async (req, res, next) => {
     const token = jwt.sign(paylod, process.env.secretKey, { expiresIn: "7d" });
     return res
       .status(200)
-      .json({ message: "login success", token, success: true });
+      .json({ message: "login success", adminToken: token, success: true });
   } catch (error) {
     return res.status(500).json({ message: error.message, status: false });
   }

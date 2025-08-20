@@ -315,3 +315,27 @@ exports.testOtpVerify = async (req, res) => {
     return res.json({ error, message: error.message });
   }
 };
+
+//  user requests
+exports.getUserList = async (req, res) => {
+  try {
+    const { admin_id } = req;
+    console.log("adi", admin_id);
+    if (!admin_id) {
+      return res.status("admin id require");
+    }
+    const users = await userModel.find({});
+    if (!users || users.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "failed to fetch users",
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    return res.json({ error, message: error.message });
+  }
+};

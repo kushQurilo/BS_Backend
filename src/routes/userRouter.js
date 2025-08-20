@@ -1,6 +1,5 @@
 const {
   userSignup,
-  pendingProfiles,
   getSingleUser,
   userLogin,
   forgetUserPassword,
@@ -8,7 +7,9 @@ const {
   testOtp,
   testOtpVerify,
   changePassword,
+  getUserList,
 } = require("../controllers/userController/userController");
+const { adminAuthentication } = require("../middlewares/AdminAuthetication");
 const {
   forgetPasswordAuth,
 } = require("../middlewares/forgetPasswordMiddleware");
@@ -23,6 +24,6 @@ userRoutes.post("/verify", verifyOTPS);
 userRoutes.post("/change-password", forgetPasswordAuth, changePassword);
 userRoutes.post("/otp-send", testOtp);
 userRoutes.post("/verify-otp", testOtpVerify);
-// userRoutes.get('/pending-profile',pendingProfiles);
+userRoutes.get("/all-users", adminAuthentication, getUserList);
 
 module.exports = userRoutes;
